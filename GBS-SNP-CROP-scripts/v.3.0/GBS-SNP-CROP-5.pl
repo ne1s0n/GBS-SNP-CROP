@@ -106,9 +106,9 @@ foreach my $file (@files) {
 	my $input_R1 = join (".", "$file","R1","fq","gz");
 	my $input_R2 = '';
 	if ($dataType eq "PE") {
+		print " - mapping $input_R1 $input_R2 file(s) to $Reference ...\n";
 		$input_R2 = join (".", "$file","R2","fq","gz");
 	}
-	print " - mapping paired $input_R1 $input_R2 file(s) to $Reference ...";
 	system ( "bwa mem -t $threads -M $Reference $input_R1 $input_R2 > $BWA_out" );
 	print "DONE.\n";
 
