@@ -15,10 +15,12 @@ use Getopt::Long qw(GetOptions);
 use Parallel::ForkManager;
 
 my $Usage = "Usage: perl GBS-SNP-CROP-5.pl -d <data type, PE = Paired-End or SR = Single-End> -b <barcode-ID file name>  -ref <reference FASTA file> -Q <Phred score> -q <mapping quality score>\n"
-." -f <SAMTools -f flag> -F <SAMTools _F flag> -t <threads> -Opt <any additional desired SAMTools options>.\n";
+." -f <SAMTools -f flag> -F <SAMTools _F flag> -t <threads> -Opt <any additional desired SAMTools options>.\n"
+."-ir <Index Reference genome, either 'TRUE' or 'FALSE' (true is default)>\n";
+
 my $Manual = "Please see UserManual on GBS-SNP-CROP GitHub page (https://github.com/halelab/GBS-SNP-CROP.git) or the original manuscript: Melo et al. (2016) BMC Bioinformatics. DOI 10.1186/s12859-016-0879-y.\n"; 
 
-my ($dataType,$barcodesID_file,$Reference,$phred_Q,$map_q,$f,$F,$threads,$sam_add);
+my ($dataType,$barcodesID_file,$Reference,$phred_Q,$map_q,$f,$F,$threads,$sam_add,$index_reference);
 
 GetOptions(
 'd=s' => \$dataType,          	# string - "PE" or "SE"
@@ -26,10 +28,11 @@ GetOptions(
 'ref=s' => \$Reference,         # file
 'Q=s' => \$phred_Q,             # numeric
 'q=s' => \$map_q,               # numeric
-'f=s' => \$f,               	# numeric 
-'F=s' => \$F,                	# numeric
+'f=s' => \$f,               	  # numeric 
+'F=s' => \$F,                	  # numeric
 't=s' => \$threads,             # numeric
 'Opt=s' => \$sam_add,           # string
+'ir=s' => \$index_reference,    # string - "TRUE" or "FALSE"
 ) or die "$Usage\n$Manual\n";
 
 print "\n#################################\n# GBS-SNP-CROP, Step 5, v.3.0\n#################################\n";
@@ -49,13 +52,35 @@ while(<$BAR>) {
 close $BAR;
 chomp (@files);
 
-# 1. BWA procedures
+#ensuring the value of $remove_singletons flag
+if (! defined $index_reference){
+	$index_reference = "TRUE";
+}
+$index_reference = uc($index_reference);
+if ($index_reference eq "TRUE"){
+	$index_reference = 1;
+}elsif ($index_reference eq "FALSE"){
+	$index_reference = 0;
+}else{
+	die ("Parameter ir can only accept values 'TRUE' and 'FALSE'\n");
+}
 
-# 1.1 Index
-print "\nIndexing reference FASTA file ...\n";
-system ( "bwa index -a bwtsw $Reference" );
-print "DONE.\n\n";
-	
+############################
+# 0. Reference genome indexing (BWA and samtools)
+############################
+if ($index_reference){
+	# 0.1 Index
+	print "\nIndexing reference FASTA file ...";
+	system ( "bwa index -a bwtsw $Reference" );
+	print "\nDONE.\n\n";
+		
+	# 0.2 Index reference FASTA file
+	print "\nIndexing the reference genome FASTA file ...";
+	system ( "samtools faidx $Reference" );
+	print "\nDONE.\n\n";
+}else{
+	print "\nSkipping indexing of reference genome\n";
+}
 ############################
 # Aligning Paired-End data 
 ############################
@@ -151,11 +176,6 @@ foreach my $file (@files) {
 $pm->wait_all_children;
 print "\nDONE.\n";
 
-# Index reference FASTA file
-print "\nIndexing the reference genome FASTA file ...";
-system ( "samtools faidx $Reference" );
-print "\nDONE.\n\n";
-
 # Mpileup SNPs discovery
 print "Producing the mpileup files ...\n";
 foreach my $file (@files) {
@@ -169,7 +189,7 @@ foreach my $file (@files) {
 	unlink ($input);
 	
 	#compressing the mpileup
-	system("gzip $view_out");
+	system("gzip $mpileup");
 
 	$pm->finish;
 }
