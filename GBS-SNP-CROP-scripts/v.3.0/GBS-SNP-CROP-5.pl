@@ -113,6 +113,10 @@ foreach my $file (@files) {
 	} else {
 		print "Unable to proceeed; please re-check the syntax of all declared SAMTools flags and options...";
 	}
+	
+	#removing SAM file
+	unlink ($input_sam);
+	
 	$pm->finish;
 }
 $pm->wait_all_children;
@@ -123,9 +127,13 @@ print "\nSorting the BAM files ...";
 foreach my $file (@files) {
 	my $pid = $pm->start and next;
 	my $input_bam = join (".", "$file","bam");
-    my $sort_out = join(".","$file","sorted.bam");
+  my $sort_out = join(".","$file","sorted.bam");
 #	print "\nSorting $input_bam file ...";
 	system ( "samtools sort $input_bam -o $sort_out" );
+	
+	#removing unsorted BAM file
+	unlink ($input_bam);
+
 	$pm->finish;
 }
 $pm->wait_all_children;
@@ -137,7 +145,7 @@ foreach my $file (@files) {
 	my $pid = $pm->start and next;
 	my $input_sorted = join (".","$file","sorted","bam");
 #	print "\nIndexing $input_sorted file ...";
-	system ( "samtools index $input_sorted" );
+	system ( "samtools index -c $input_sorted" );
 	$pm->finish;
 }
 $pm->wait_all_children;
@@ -156,6 +164,13 @@ foreach my $file (@files) {
 	my $mpileup = join (".", "$file","mpileup");
 #	print "Producing mpileup file from $file ...\n";
 	system ("samtools mpileup -Q$phred_Q -q$map_q -B -C 50 -f $Reference $input > $mpileup");
+	
+	#removing sorted BAM file
+	unlink ($input);
+	
+	#compressing the mpileup
+	system("gzip $view_out");
+
 	$pm->finish;
 }
 $pm->wait_all_children;
