@@ -175,7 +175,7 @@ foreach my $file (@files) {
 		
 	#--------------- 2.5 Mpileup compression
 	print " - compressing the final mpileup...";
-	system("gzip $mpileup");
+	system("gzip -f $mpileup");
 	print "DONE.\n";
 }
 
