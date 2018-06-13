@@ -98,6 +98,7 @@ if ($index_reference){
 }
 
 foreach my $file (@files) {
+	print "\nProcessing sample $file\n";
 	#########################################
 	# Mapping on reference genome via BWA-mem
 	#########################################
@@ -107,7 +108,7 @@ foreach my $file (@files) {
 	if ($dataType eq "PE") {
 		$input_R2 = join (".", "$file","R2","fq","gz");
 	}
-	print "Mapping paired $input_R1 $input_R2 file(s) to $Reference ...\n";
+	print " - mapping paired $input_R1 $input_R2 file(s) to $Reference ...";
 	system ( "bwa mem -t $threads -M $Reference $input_R1 $input_R2 > $BWA_out" );
 	print "DONE.\n";
 
@@ -116,7 +117,7 @@ foreach my $file (@files) {
 	#########################################
 
 	#--------------- 2.1 SAM to BAM
-	print "\nProcessing the SAM files ...";
+	print " - SAM to BAM...";
 	my $input_sam = join (".", "$file","sam");
 	my $view_out = join(".","$file","bam");
 	#	print "\nProcessing $input_sam file ...";
@@ -140,10 +141,10 @@ foreach my $file (@files) {
 	#removing SAM file
 	unlink ($input_sam);
 	
-	print "\nDONE.\n";
+	print "DONE.\n";
 
 	#--------------- 2.2 Sorting BAM files
-	print "\nSorting the BAM files ...";
+	print " - sorting BAM file...";
 	my $input_bam = join (".", "$file","bam");
 	my $sort_out = join(".","$file","sorted.bam");
 	#	print "\nSorting $input_bam file ...";
@@ -152,17 +153,17 @@ foreach my $file (@files) {
 	#removing unsorted BAM file
 	unlink ($input_bam);
 
-	print "\nDONE.\n";
+	print "DONE.\n";
 
 	#--------------- 2.3 Index sorted BAM files
-	print "\nIndexing the sorted BAM files ...";
+	print " - indexing the sorted BAM file...";
 	my $input_sorted = join (".","$file","sorted","bam");
 	#	print "\nIndexing $input_sorted file ...";
 	system ( "samtools index -@ $threads -c $input_sorted" );
-	print "\nDONE.\n";
+	print "DONE.\n";
 
 	#--------------- 2.4 Mpileup SNPs discovery
-	print "Producing the mpileup files ...\n";
+	print " - producing the mpileup file...";
 	my $input = join (".", "$file","sorted","bam");
 	my $mpileup = join (".", "$file","mpileup");
 	#	print "Producing mpileup file from $file ...\n";
@@ -170,11 +171,12 @@ foreach my $file (@files) {
 		
 	#removing sorted BAM file
 	unlink ($input);
+	print "DONE.\n";
 		
-	#compressing the mpileup
+	#--------------- 2.5 Mpileup compression
+	print " - compressing the final mpileup...";
 	system("gzip $mpileup");
-	
-	print "DONE.\n\n";
+	print "DONE.\n";
 }
 
 system ( "mv *bam* ./alignments" );
