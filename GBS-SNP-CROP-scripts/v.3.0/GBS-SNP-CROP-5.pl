@@ -144,7 +144,7 @@ foreach my $file (@files) {
 	print "DONE.\n";
 
 	#--------------- 2.2 Sorting BAM files
-	print " - sorting BAM file...";
+	print " - sorting BAM file...\n";
 	my $input_bam = join (".", "$file","bam");
 	my $sort_out = join(".","$file","sorted.bam");
 	#	print "\nSorting $input_bam file ...";
@@ -163,7 +163,7 @@ foreach my $file (@files) {
 	print "DONE.\n";
 
 	#--------------- 2.4 Mpileup SNPs discovery
-	print " - producing the mpileup file...";
+	print " - producing the mpileup file...\n";
 	my $input = join (".", "$file","sorted","bam");
 	my $mpileup = join (".", "$file","mpileup");
 	#	print "Producing mpileup file from $file ...\n";
