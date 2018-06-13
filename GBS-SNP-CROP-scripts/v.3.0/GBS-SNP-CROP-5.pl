@@ -105,10 +105,12 @@ foreach my $file (@files) {
 	my $BWA_out = join(".","$file","sam");
 	my $input_R1 = join (".", "$file","R1","fq","gz");
 	my $input_R2 = '';
+	
 	if ($dataType eq "PE") {
-		print " - mapping $input_R1 $input_R2 file(s) to $Reference ...\n";
 		$input_R2 = join (".", "$file","R2","fq","gz");
 	}
+	
+	print " - mapping $input_R1 $input_R2 file(s) to $Reference ...\n";
 	system ( "bwa mem -t $threads -M $Reference $input_R1 $input_R2 > $BWA_out" );
 	print "DONE.\n";
 
@@ -135,7 +137,7 @@ foreach my $file (@files) {
 	} elsif ($f > 0 && $F == 0 && ($sam_add eq '0') ) {
 		system ( "samtools view -@ $threads -b -q$phred_Q -f$f $input_sam > $view_out" );
 	} else {
-		print "Unable to proceeed; please re-check the syntax of all declared SAMTools flags and options...";
+		die("Unable to proceeed; please re-check the syntax of all declared SAMTools flags and options...\n");
 	}
 		
 	#removing SAM file
