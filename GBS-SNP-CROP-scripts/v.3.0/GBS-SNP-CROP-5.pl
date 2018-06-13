@@ -52,7 +52,7 @@ while(<$BAR>) {
 close $BAR;
 chomp (@files);
 
-#ensuring the value of $remove_singletons flag
+#ensuring the value of $index_reference flag
 if (! defined $index_reference){
 	$index_reference = "TRUE";
 }
@@ -62,145 +62,120 @@ if ($index_reference eq "TRUE"){
 }elsif ($index_reference eq "FALSE"){
 	$index_reference = 0;
 }else{
-	die ("Parameter ir can only accept values 'TRUE' and 'FALSE'\n");
+	die ("Parameter -ir can only accept values 'TRUE' and 'FALSE'\n");
 }
 
-############################
-# 0. Reference genome indexing (BWA and samtools)
-############################
-if ($index_reference){
-	# 0.1 Index
-	print "\nIndexing reference FASTA file ...";
-	system ( "bwa index -a bwtsw $Reference" );
-	print "\nDONE.\n\n";
-		
-	# 0.2 Index reference FASTA file
-	print "\nIndexing the reference genome FASTA file ...";
-	system ( "samtools faidx $Reference" );
-	print "\nDONE.\n\n";
-}else{
-	print "\nSkipping indexing of reference genome\n";
+#ensuring the value of $dataType flag
+if (! defined $dataType){
+	die ("Parameter -d is required, allowed values: 'PE' and 'SE'\n");
 }
-############################
-# Aligning Paired-End data 
-############################
-
-if ($dataType eq "PE") {
-
-# 1.2 BWA-mem mapping
-	foreach my $file (@files) {
-		my $input_R1 = join (".", "$file","R1","fq","gz");
-  	    my $input_R2 = join (".", "$file","R2","fq","gz");
-        my $BWA_out = join(".","$file","sam");
-		print "Mapping paired $input_R1 $input_R2 files to $Reference ...\n";
-		system ( "bwa mem -t $threads -M $Reference $input_R1 $input_R2 > $BWA_out" );
-	}
-	print "DONE.\n";
-
-############################
-# Aligning Single-End data 
-############################
-
-} elsif ($dataType eq "SE") {
-
-# 1.2 BWA-mem mapping
-	foreach my $file (@files) {
-		my $input_R1 = join (".", "$file","R1","fq","gz");
-  	    my $BWA_out = join(".","$file","sam");
-		print "Mapping single $input_R1 file to $Reference ...\n";
-		system ( "bwa mem -t $threads -M $Reference $input_R1 > $BWA_out" );
-	}
-	print "DONE.\n";
+$dataType = uc($dataType);
+if ($dataType ne 'SE' and $dataType ne 'PE'){
+	die ("Parameter -d is required, allowed values: 'PE' and 'SE'\n");
 }
-
-# 2. SAMTools procedures
-
-# 2.1 SAM to BAM
-print "\nProcessing the SAM files ...";
-foreach my $file (@files) {
-	my $pid = $pm->start and next;
-	my $input_sam = join (".", "$file","sam");
-    my $view_out = join(".","$file","bam");
-#	print "\nProcessing $input_sam file ...";
-
-	if ($F > 0 && $f > 0 && ($sam_add ne '0') ) {
-		system ( "samtools view -b -q$phred_Q -f$f -F$F $sam_add $input_sam > $view_out" );
-	} elsif ($F > 0 && $f == 0 && ($sam_add ne '0') ) {
-		system ( "samtools view -b -q$phred_Q -F$F $sam_add $input_sam > $view_out" );
-	} elsif ($f > 0 && $F == 0 && ($sam_add ne '0') ) {
-		system ( "samtools view -b -q$phred_Q -f$f $sam_add $input_sam > $view_out" );
-	} elsif ($f > 0 && $F > 0 && ($sam_add eq '0') ) {
-		system ( "samtools view -b -q$phred_Q -f$f -F$F $input_sam > $view_out" );
-	} elsif ($F > 0 && $f == 0 && ($sam_add eq '0') ) {
-		system ( "samtools view -b -q$phred_Q -F$F $input_sam > $view_out" );
-	} elsif ($f > 0 && $F == 0 && ($sam_add eq '0') ) {
-		system ( "samtools view -b -q$phred_Q -f$f $input_sam > $view_out" );
-	} else {
-		print "Unable to proceeed; please re-check the syntax of all declared SAMTools flags and options...";
-	}
-	
-	#removing SAM file
-	unlink ($input_sam);
-	
-	$pm->finish;
-}
-$pm->wait_all_children;
-print "\nDONE.\n";
-
-# 2.2 Sorting BAM files
-print "\nSorting the BAM files ...";
-foreach my $file (@files) {
-	my $pid = $pm->start and next;
-	my $input_bam = join (".", "$file","bam");
-  my $sort_out = join(".","$file","sorted.bam");
-#	print "\nSorting $input_bam file ...";
-	system ( "samtools sort $input_bam -o $sort_out" );
-	
-	#removing unsorted BAM file
-	unlink ($input_bam);
-
-	$pm->finish;
-}
-$pm->wait_all_children;
-print "\nDONE.\n";
-
-# 2.3 Index sorted BAM files
-print "\nIndexing the sorted BAM files ...";
-foreach my $file (@files) {
-	my $pid = $pm->start and next;
-	my $input_sorted = join (".","$file","sorted","bam");
-#	print "\nIndexing $input_sorted file ...";
-	system ( "samtools index -c $input_sorted" );
-	$pm->finish;
-}
-$pm->wait_all_children;
-print "\nDONE.\n";
-
-# Mpileup SNPs discovery
-print "Producing the mpileup files ...\n";
-foreach my $file (@files) {
-	my $pid = $pm->start and next;
-	my $input = join (".", "$file","sorted","bam");
-	my $mpileup = join (".", "$file","mpileup");
-#	print "Producing mpileup file from $file ...\n";
-	system ("samtools mpileup -Q$phred_Q -q$map_q -B -C 50 -f $Reference $input > $mpileup");
-	
-	#removing sorted BAM file
-	unlink ($input);
-	
-	#compressing the mpileup
-	system("gzip $mpileup");
-
-	$pm->finish;
-}
-$pm->wait_all_children;
-print "DONE.\n\n";
 
 sub main {
    	my $dir = "alignments";
   	unless(-e $dir, or mkdir $dir) {die "Directory $dir does not exist and cannot be created.\n";}
 }   
 main();
+
+############################
+# 1. Reference genome indexing (BWA and samtools)
+############################
+if ($index_reference){
+	# 1.1 Index
+	print "\nIndexing reference FASTA file ...";
+	system ( "bwa index -a bwtsw $Reference" );
+	print "\nDONE.\n\n";
+		
+	# 1.2 Index reference FASTA file
+	print "\nIndexing the reference genome FASTA file ...";
+	system ( "samtools faidx $Reference" );
+	print "\nDONE.\n\n";
+}else{
+	print "\nSkipping indexing of reference genome\n";
+}
+
+foreach my $file (@files) {
+	#########################################
+	# Mapping on reference genome via BWA-mem
+	#########################################
+	my $BWA_out = join(".","$file","sam");
+	my $input_R1 = join (".", "$file","R1","fq","gz");
+	my $input_R2 = '';
+	if ($dataType eq "PE") {
+		$input_R2 = join (".", "$file","R2","fq","gz");
+	}
+	print "Mapping paired $input_R1 $input_R2 file(s) to $Reference ...\n";
+	system ( "bwa mem -t $threads -M $Reference $input_R1 $input_R2 > $BWA_out" );
+	print "DONE.\n";
+
+	#########################################
+	# SAMTools procedures
+	#########################################
+
+	#--------------- 2.1 SAM to BAM
+	print "\nProcessing the SAM files ...";
+	my $input_sam = join (".", "$file","sam");
+	my $view_out = join(".","$file","bam");
+	#	print "\nProcessing $input_sam file ...";
+
+	if ($F > 0 && $f > 0 && ($sam_add ne '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -f$f -F$F $sam_add $input_sam > $view_out" );
+	} elsif ($F > 0 && $f == 0 && ($sam_add ne '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -F$F $sam_add $input_sam > $view_out" );
+	} elsif ($f > 0 && $F == 0 && ($sam_add ne '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -f$f $sam_add $input_sam > $view_out" );
+	} elsif ($f > 0 && $F > 0 && ($sam_add eq '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -f$f -F$F $input_sam > $view_out" );
+	} elsif ($F > 0 && $f == 0 && ($sam_add eq '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -F$F $input_sam > $view_out" );
+	} elsif ($f > 0 && $F == 0 && ($sam_add eq '0') ) {
+		system ( "samtools view -@ $threads -b -q$phred_Q -f$f $input_sam > $view_out" );
+	} else {
+		print "Unable to proceeed; please re-check the syntax of all declared SAMTools flags and options...";
+	}
+		
+	#removing SAM file
+	unlink ($input_sam);
+	
+	print "\nDONE.\n";
+
+	#--------------- 2.2 Sorting BAM files
+	print "\nSorting the BAM files ...";
+	my $input_bam = join (".", "$file","bam");
+	my $sort_out = join(".","$file","sorted.bam");
+	#	print "\nSorting $input_bam file ...";
+	system ( "samtools sort -@ $threads $input_bam -o $sort_out" );
+		
+	#removing unsorted BAM file
+	unlink ($input_bam);
+
+	print "\nDONE.\n";
+
+	#--------------- 2.3 Index sorted BAM files
+	print "\nIndexing the sorted BAM files ...";
+	my $input_sorted = join (".","$file","sorted","bam");
+	#	print "\nIndexing $input_sorted file ...";
+	system ( "samtools index -@ $threads -c $input_sorted" );
+	print "\nDONE.\n";
+
+	#--------------- 2.4 Mpileup SNPs discovery
+	print "Producing the mpileup files ...\n";
+	my $input = join (".", "$file","sorted","bam");
+	my $mpileup = join (".", "$file","mpileup");
+	#	print "Producing mpileup file from $file ...\n";
+	system ("samtools mpileup -Q$phred_Q -q$map_q -B -C 50 -f $Reference $input > $mpileup");
+		
+	#removing sorted BAM file
+	unlink ($input);
+		
+	#compressing the mpileup
+	system("gzip $mpileup");
+	
+	print "DONE.\n\n";
+}
 
 system ( "mv *bam* ./alignments" );
 system ( "rm *.sam" );
