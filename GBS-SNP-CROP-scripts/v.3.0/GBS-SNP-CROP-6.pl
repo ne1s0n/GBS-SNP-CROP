@@ -49,7 +49,7 @@ if ($indels) {
 	print "Counting nucleotides and filtering monomorphic sites for all genotypes. Even using multi-threads this process can take a while ... be patient!\n";
 
 	foreach my $file (@files) {
-	    	my $mpileup_input = join (".", "$file","mpileup");
+	  my $mpileup_input = join (".", "$file","mpileup");
 		my $count_out = join (".", "$file","count","txt");
 		my $ref_file = join (".", "$file","ref","txt");
 		print $CountList "$count_out\n";
