@@ -35,14 +35,31 @@ GetOptions(
 print "\n###############################\n# GBS-SNP-CROP, Step 7, v.3.0\n###############################\n";
 my $sttime = time;
 
+#opening connection to input file (possibly gzipped)
+my $VAR;
+if ($SummaryFile =~ /\.gz$/){
+	#input is compressed
+	open $VAR, "<:gzip", "$SummaryFile" or die "[ERROR] Cannot read compressed file $SummaryFile";
+}else{
+	#input is plain
+	open $VAR, "<", "$SummaryFile" or die "[ERROR] Cannot read file $SummaryFile";
+}
+
+#opening connection to output file (possibly gzipped)
+my $DEST;
+if ($output =~ /\.gz$/){
+	#output is compressed
+	open $DEST, ">:gzip", "$output" or die "[ERROR] Cannot write compressed file $output";
+}else{
+	#output is plain
+	open $DEST, ">", "$output" or die "[ERROR] Cannot write file $output";
+}
+
 ###################################
 # Genotyping both SNPs and Indels  
 ###################################
 if ($indels) {
 	print "\nGBS-SNP-CROP is filtering both SNPs and indels and calling genotypes for your population...\n";
-
-	open my $VAR, "<", "$SummaryFile" or die "Can't load file $SummaryFile";
-	open my $DEST, ">", "$output" or die "Can't initialized $output output file";
 
 	my $lc = 0;
 
@@ -349,9 +366,6 @@ if ($indels) {
 } else {
 	print "\nGBS-SNP-CROP is filtering only SNPs and calling genotypes for your population...\n";
 	
-	open my $VAR, "<", "$SummaryFile" or die "Can't load file $SummaryFile";
-	open my $DEST, ">", "$output" or die "Can't initialized $output output file";
-
 	my $lc = 0;
 
 	while (<$VAR>) {
