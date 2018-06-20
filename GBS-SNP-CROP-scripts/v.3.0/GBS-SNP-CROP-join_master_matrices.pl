@@ -30,9 +30,11 @@ my $OUTFILE;
 if ($outfile =~ /\.gz$/){
 	#output is compressed
 	open $OUTFILE, ">:gzip", "$outfile" or die "[ERROR] Cannot write file $outfile";
+	print "Compressed output to $outfile\n";
 }else{
 	#output is plain
 	open $OUTFILE, ">", "$outfile" or die "[ERROR] Cannot write file $outfile";
+	print "Plain output to $outfile\n";
 }
 
 #read list of input files
