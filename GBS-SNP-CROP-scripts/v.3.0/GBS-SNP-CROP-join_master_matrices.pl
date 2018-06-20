@@ -5,7 +5,7 @@
 #one line at a time. We take advandage of the internal sorting of the
 #matrices (alphabetical for chromosome, then ascending for position).
 #In the spirit of other GBS-SNP-CROP scripts, no function/OOP was used
-#(even there was ample room for both).
+#(even if there was ample room for both).
 
 use strict;
 use warnings;
@@ -24,9 +24,16 @@ GetOptions(
 	'o=s' => \$outfile,			 # output file
 ) or die "$Usage\n";
 
-#let's just check the outfile, so that to avoid parsing the matrices
+#let's just check the outfile, so to avoid parsing the matrices
 #only to discover that we cannot write
-open my $OUTFILE, ">", "$outfile" or die "[ERROR] Cannot write file $outfile";
+my $OUTFILE;
+if ($outfile =~ /\.gz$/){
+	#output is compressed
+	open $OUTFILE, ">:gzip", "$outfile" or die "[ERROR] Cannot write file $outfile";
+}else{
+	#output is plain
+	open $OUTFILE, ">", "$outfile" or die "[ERROR] Cannot write file $outfile";
+}
 
 #read list of input files
 open my $INFILE_LIST, '<', $infile_list or die "[ERROR] Cannot open list file $infile_list";
